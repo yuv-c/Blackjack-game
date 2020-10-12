@@ -1,27 +1,47 @@
 import logging
-from abc import ABC
 from Blackjack_base import Player, BlackJackGameBase
-from flask import Flask, request
-from flask_socketio import SocketIO, join_room, rooms
+# from flask import Flask, request
+# from flask_socketio import SocketIO, join_room, rooms
+import socketio
 import time
 
-logging.basicConfig(level=logging.DEBUG)
+
+'''
 # TODO: https://realpython.com/async-io-python/ USE ASYNC while waiting for usr input
+
+# it is a SyntaxError to use await outside of an async def coroutine.
+
+# an awaitable object is either (1) another coroutine or (2) an object defining an 
+.__await__() dunder method that returns an iterator.
+'''
+logging.basicConfig(level=logging.DEBUG)
 # =========================================================================================================
 # ************************************************* Server ************************************************
 # =========================================================================================================
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'mysecret'
-socketio = SocketIO(app)
+
+# app = Flask(__name__)
+# app.config['SECRET_KEY'] = 'mysecret'
+# socketio = SocketIO(app)
 
 sid_name_money_room_dictionary = {}  # {sid: {'name': players_name, 'money': players_money, 'room': room_number}}
 game_room = {}  # room_num: {'game_instance': BlackJackGame(), 'sid_list': [sid_1, sid_2..]}}
-# game_room is a dictionary containing an instance of BlackJackGame class and a list of players SID in that room.
+# game_room is a dictionary containing an instance of class BlackJackGame and a list of players SID in that room.
 
 MAX_NUMBER_OF_PLAYERS_IN_ROOM = 6
 
 
+class GameRoom(object):
+
+    def __init__(self, room_num):
+        self._room_num = room_num
+
+    # TODO: Think what methods you need (who does GameRoom have to reach out? what is the scope?)
+    #  and choose variables according to that.
+    # TODO: Think of a data type to hold sid's, names, Players instances
+
+
 def open_game_room(room_num):
+    global socketio
     time.sleep(1)
     game_room[room_num] = {}
     game_room[room_num]['game_instance'] = BlackJackGameOnline(room_num, socketio)
@@ -33,17 +53,19 @@ def close_game_room(room_num):
 
 
 @socketio.on('connect')
-def handle_connect():
-    client_sid = request.sid  # request.sid is populated through the context of the call
+def handle_connect(sid):
+    client_sid = sid  # request.sid is populated through the context of the call
     print("client SID = %s has connected, Requesting name" % client_sid)
 
     socketio.emit("send_me_name", room=client_sid)
 
 
 @socketio.on('get_name')
-def get_name(name):
+def get_name(sid, name):
+    global sid_name_money_room_dictionary
+
     logging.info("got Name: %s ", name)
-    client_sid = request.sid
+    client_sid = sid
     sid_name_money_room_dictionary[client_sid] = {'name': name, 'money': None, 'room': None}
     socketio.emit("send_me_money", room=client_sid)
 
@@ -150,10 +172,9 @@ def get_input_from_user(msg, sid):
 # ******************************************** BlackJack Online *******************************************
 # =========================================================================================================
 
-class OnlinePlayer(Player, ABC):
-    def __init__(self, name, socketio, sid, amount_of_money=0):
-        super().__init__(name, amount_of_money)
-        self._sid = sid
+class OnlinePlayer(Player):
+    def __init__(self, name: str, sid: str, amount_of_money: int = 0):
+        super().__init__(name=name, id=sid, amount_of_money=amount_of_money)
         self._input = None
         self._socketio = socketio
 
@@ -174,7 +195,7 @@ class OnlinePlayer(Player, ABC):
         self._input = user_input
 
     @staticmethod
-    def output_msg_to_user(text, sid):
+    def msg_to_user(text, sid):
         send_text_to_user(text, sid)
 
 

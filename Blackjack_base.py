@@ -1,6 +1,7 @@
 from enum import Enum
 import random
 import logging
+import abc
 
 
 class NoMoreCardsInDeckError(Exception):
@@ -142,20 +143,21 @@ class Deck(object):
         self.shuffle()
 
 
-class Player(object):
-
-    def __init__(self, name, amount_of_money=0):
+class Player(abc.ABC):
+    def __init__(self, name: str, id: str, amount_of_money: int = 0) -> None:
         self._threads = []
         self.cards = Deck()
         self._name = name
         self._amount_of_money = amount_of_money
+        self.id = id
         logging.debug("Player Created with name: %s. money: %d", name, amount_of_money)
 
     def __str__(self):
         return self._name
 
+    @abc.abstractmethod
     def _get_input_from_user(self, msg):  # method to request strings (i.e names, how many players, etc)
-        raise NotImplementedError
+        pass
 
     def get_cmd(self, msg, list_of_valid_actions):
         while True:
@@ -180,22 +182,21 @@ class Player(object):
             bet = int(bet)
         except ValueError:
             logging.info("Got a non valid bet from %s", self.get_players_name)
-            self.output_msg_to_user("Enter a positive number")
+            self.msg_to_user("Enter a positive number")
             return False
 
         if self.remaining_money == 0:
-            logging.error("Raising PlayerHasNoMoneyError for player %s", self.get_players_name)
-            raise PlayerHasNoMoneyError()
+            raise PlayerHasNoMoneyError("Player %s has no money but tried to bet", self.get_players_name)
 
         if bet > self.remaining_money:
             logging.info("%s tried to bet more than he has", self.get_players_name)
-            self.output_msg_to_user(
+            self.msg_to_user(
                 "You don't have %s$! you can place a bet up to %d" % (bet, self.remaining_money))
             return False
 
         elif bet < 0:
             logging.info("%s tried to bet a negative number", self.get_players_name)
-            self.output_msg_to_user("Enter a positive number")
+            self.msg_to_user("Enter a positive number")
             return False
         logging.debug("Bet is valid")
         return True
@@ -230,19 +231,20 @@ class Player(object):
                 return Actions.SURRENDER
 
             else:
-                self.output_msg_to_user("Not a valid command!")
+                self.msg_to_user("Not a valid command!")
                 logging.info("%s typed the following invalid command: %s.", self.get_players_name, user_input)
                 return None
 
         except AttributeError:
             logging.exception("%s typed %s, not a string", self.get_players_name, user_input)
-            self.output_msg_to_user("Enter a valid command according to the instructions")
+            self.msg_to_user("Enter a valid command according to the instructions")
 
     @property
     def get_players_name(self):
         return self._name
 
-    def output_msg_to_user(self, msg):
+    @abc.abstractmethod
+    def msg_to_user(self, msg):
         raise NotImplementedError
 
     def take_card(self, card):
@@ -269,18 +271,18 @@ class Player(object):
         return self._amount_of_money
 
 
-class BlackJackGameBase(object):
+class BlackJackGameBase(abc.ABC):
     def __init__(self):
         self._players_bet = {}
-        self._players = {}
+        self._players = []
         self._players_in_round = []
-        self._players_id = []
         self._dealers_cards = Deck()
         self._game_deck = Deck()
 
-    def _add_player(self, name, money, sid):
-        raise NotImplementedError
+    def _add_player(self, player):
+        self._players.append(player)
 
+    @abc.abstractmethod
     def remove_player_from_game(self, player_id):
         raise NotImplementedError
 
@@ -302,6 +304,7 @@ class BlackJackGameBase(object):
         else:
             return 10  # A face card
 
+    @abc.abstractmethod
     def output_msg_to_game(self, msg):
         raise NotImplementedError
 
@@ -397,13 +400,12 @@ class BlackJackGameBase(object):
         bet = self._players_bet[player]
         amount_to_pay = bet * multiplier
         logging.info("%s is getting payed %d$", player, amount_to_pay)
-        player.output_msg_to_user("%s, you won %d$" % (player.get_players_name, amount_to_pay))
+        player.msg_to_user("%s, you won %d$" % (player.get_players_name, amount_to_pay))
         player.get_money(amount_to_pay)
 
     def _take_bets_from_players(self):
         logging.info("BlackJackGame is starting to take bets from players.")
-        for player_id in self._players:
-            player = self._players[player_id]
+        for player in self._players:
 
             logging.debug("take_bets_from_players: trying to take a command from %s", player)
 
@@ -429,35 +431,36 @@ class BlackJackGameBase(object):
             # The state of the game checks that player is not bust before paying him, so no need to recheck it
             if self._get_deck_game_value(player.cards) > dealers_hand_total:
                 logging.info("%s beat the dealer, he had %d in his pot", player, self._players_bet[player])
-                player.output_msg_to_user("%s, You beat the dealer! you get twice your bet" % player.get_players_name)
+                player.msg_to_user("%s, You beat the dealer! you get twice your bet" % player.get_players_name)
                 self.output_msg_to_game("%s, has beat the dealer!" % player.get_players_name)
                 self._pay_player(player, TWICE_AS_THE_BET)
 
             elif self._get_deck_game_value(player.cards) == dealers_hand_total:
                 logging.info("%s and the dealer are in a tie, he had %d in his pot", player, self._players_bet[player])
-                player.output_msg_to_user(
+                player.msg_to_user(
                     "%s, You are tied with the dealer! you get 1.5 times your bet" % player.get_players_name)
                 self._pay_player(player, SAME_AS_THE_BET)  # This is a tie, just give his money back
 
             else:  # Player lost, take his money. NOTE: The game doesn't do anything with the money, just takes it from users and deletes it.
                 logging.info("%s lost, he had %d in his pot", player, self._players_bet[player])
-                player.output_msg_to_user("%s, You lost" % player.get_players_name)
+                player.msg_to_user("%s, You lost" % player.get_players_name)
                 self.output_msg_to_game("%s lost" % player.get_players_name)
                 self._players_bet[player] = 0
 
     def _return_lists_of_players_with_and_without_money(self):
         players_with_money = []
         players_without_money = []
-        for player_id in self._players:
-            player = self._players[player_id]
+        for player in self._players:
+            player_id = player.id
             if player.remaining_money == 0:
                 players_without_money.append(player_id)
             players_with_money.append(player_id)
 
         return players_with_money, players_without_money
 
+    @abc.abstractmethod
     def _end_connection_with_player(self, player_id):
-        raise NotImplementedError
+        pass
 
     def play_round(self):
         # while there are players with money, open new rounds
@@ -518,7 +521,7 @@ class BlackJackGameBase(object):
                     try:
                         allowed_commands.remove(Actions.DOUBLE)  # players can't double down after hitting
                     except ValueError:
-                        pass    # already removed this option when player previously hit
+                        pass  # already removed this option when player previously hit
                     player.take_card(self._game_deck.draw_card())
                     logging.info("%s said HIT", player)
                     self.output_msg_to_game(
@@ -535,7 +538,7 @@ class BlackJackGameBase(object):
                         self._players_bet[player] += player.give_money(players_bet)
 
                     else:
-                        player.output_msg_to_user("%s - You don't have enough to double down" % player.get_players_name)
+                        player.msg_to_user("%s - You don't have enough to double down" % player.get_players_name)
                         logging.info("%s tried to double down, but doesnt have enough money", player.get_players_name)
 
                 if player_action == Actions.STAND:
