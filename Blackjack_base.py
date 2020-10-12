@@ -39,15 +39,16 @@ class Actions(Enum):
 
 
 SUITES_TO_ICON = {
-    Suites.HEARTS: "♥", Suites.CLUBS: "♣",
-    Suites.DIAMONDS: "♦", Suites.SPADES: "♠"
+    Suites.HEARTS: "♥",
+    Suites.CLUBS: "♣",
+    Suites.DIAMONDS: "♦",
+    Suites.SPADES: "♠",
 }
 
 ALL_CARD_RANKS = list(range(2, 11)) + list("JQKA")
 
 
 class Card(object):
-
     def __init__(self, suit, rank):
         self._suit = suit
         self._rank = rank
@@ -78,7 +79,6 @@ class Card(object):
 
 
 class Deck(object):
-
     def __init__(self):
         self._deck = []
 
@@ -156,7 +156,9 @@ class Player(abc.ABC):
         return self._name
 
     @abc.abstractmethod
-    def _get_input_from_user(self, msg):  # method to request strings (i.e names, how many players, etc)
+    def _get_input_from_user(
+        self, msg
+    ):  # method to request strings (i.e names, how many players, etc)
         pass
 
     def get_cmd(self, msg, list_of_valid_actions):
@@ -165,7 +167,11 @@ class Player(abc.ABC):
             logging.info("Got input from user: %s", user_input)
             user_action = self._convert_command_to_Action(user_input)
             if user_action not in list_of_valid_actions:
-                logging.info("Got un-allowed Action %s from %s", user_action, self.get_players_name)
+                logging.info(
+                    "Got un-allowed Action %s from %s",
+                    user_action,
+                    self.get_players_name,
+                )
                 continue
             return user_action
 
@@ -186,12 +192,16 @@ class Player(abc.ABC):
             return False
 
         if self.remaining_money == 0:
-            raise PlayerHasNoMoneyError("Player %s has no money but tried to bet", self.get_players_name)
+            raise PlayerHasNoMoneyError(
+                "Player %s has no money but tried to bet", self.get_players_name
+            )
 
         if bet > self.remaining_money:
             logging.info("%s tried to bet more than he has", self.get_players_name)
             self.msg_to_user(
-                "You don't have %s$! you can place a bet up to %d" % (bet, self.remaining_money))
+                "You don't have %s$! you can place a bet up to %d"
+                % (bet, self.remaining_money)
+            )
             return False
 
         elif bet < 0:
@@ -223,20 +233,30 @@ class Player(abc.ABC):
                 return Actions.SKIP
 
             if user_input == "d":
-                logging.info("accepted decision from %s, Double Down", self.get_players_name)
+                logging.info(
+                    "accepted decision from %s, Double Down", self.get_players_name
+                )
                 return Actions.DOUBLE
 
             if user_input == "surrender":
-                logging.info("accepted decision from %s, Surrender", self.get_players_name)
+                logging.info(
+                    "accepted decision from %s, Surrender", self.get_players_name
+                )
                 return Actions.SURRENDER
 
             else:
                 self.msg_to_user("Not a valid command!")
-                logging.info("%s typed the following invalid command: %s.", self.get_players_name, user_input)
+                logging.info(
+                    "%s typed the following invalid command: %s.",
+                    self.get_players_name,
+                    user_input,
+                )
                 return None
 
         except AttributeError:
-            logging.exception("%s typed %s, not a string", self.get_players_name, user_input)
+            logging.exception(
+                "%s typed %s, not a string", self.get_players_name, user_input
+            )
             self.msg_to_user("Enter a valid command according to the instructions")
 
     @property
@@ -245,7 +265,7 @@ class Player(abc.ABC):
 
     @abc.abstractmethod
     def msg_to_user(self, msg):
-        raise NotImplementedError
+        pass
 
     def take_card(self, card):
         self.cards.take_card(card, bool)
@@ -255,11 +275,17 @@ class Player(abc.ABC):
 
     def get_money(self, amount_to_get):
         self._amount_of_money += amount_to_get
-        logging.debug("%s got %d and now has %d", self._name, amount_to_get, self.remaining_money)
+        logging.debug(
+            "%s got %d and now has %d", self._name, amount_to_get, self.remaining_money
+        )
 
     def give_money(self, amount_to_give):
         self._amount_of_money -= amount_to_give
-        logging.debug("%s gave money and now has %s ", self.get_players_name, self._amount_of_money)
+        logging.debug(
+            "%s gave money and now has %s ",
+            self.get_players_name,
+            self._amount_of_money,
+        )
         return amount_to_give
 
     @property
@@ -284,7 +310,7 @@ class BlackJackGameBase(abc.ABC):
 
     @abc.abstractmethod
     def remove_player_from_game(self, player_id):
-        raise NotImplementedError
+        pass
 
     def get_players_in_round_decks_as_icons_in_a_dictionary(self):
 
@@ -306,7 +332,7 @@ class BlackJackGameBase(abc.ABC):
 
     @abc.abstractmethod
     def output_msg_to_game(self, msg):
-        raise NotImplementedError
+        pass
 
     def _get_deck_game_value(self, deck):
 
@@ -381,9 +407,13 @@ class BlackJackGameBase(abc.ABC):
                 self._players_bet[player] = 0
 
     def _handle_naturals_before_players_can_decide(self):
-        self.output_msg_to_game("Dealer's hand: %s" % self._dealers_cards.return_deck_as_icons)
+        self.output_msg_to_game(
+            "Dealer's hand: %s" % self._dealers_cards.return_deck_as_icons
+        )
         if self._dealer_has_blackjack():
-            self.output_msg_to_game("Dealer has Blackjack - %s" % self._dealers_cards.return_deck_as_icons)
+            self.output_msg_to_game(
+                "Dealer has Blackjack - %s" % self._dealers_cards.return_deck_as_icons
+            )
             self._return_money_to_players_with_blackjack()
             return
 
@@ -394,7 +424,9 @@ class BlackJackGameBase(abc.ABC):
                 self._pay_player(player, ONE_AND_A_HALF_TIMES_THE_BET)
                 self._players_bet[player] = 0
                 self._players_in_round.remove(player)
-                self.output_msg_to_game("%s won 1.5 times his bet" % player.get_players_name)
+                self.output_msg_to_game(
+                    "%s won 1.5 times his bet" % player.get_players_name
+                )
 
     def _pay_player(self, player, multiplier):
         bet = self._players_bet[player]
@@ -407,12 +439,20 @@ class BlackJackGameBase(abc.ABC):
         logging.info("BlackJackGame is starting to take bets from players.")
         for player in self._players:
 
-            logging.debug("take_bets_from_players: trying to take a command from %s", player)
+            logging.debug(
+                "take_bets_from_players: trying to take a command from %s", player
+            )
 
             allowed_actions = [Actions.BET, Actions.SKIP]
-            command = player.get_cmd("To bet, type 'B'. To skip this round, type 'Skip'", allowed_actions)
+            command = player.get_cmd(
+                "To bet, type 'B'. To skip this round, type 'Skip'", allowed_actions
+            )
 
-            logging.debug("take_bets_from_players: Got command %s from %s", command, player.get_players_name)
+            logging.debug(
+                "take_bets_from_players: Got command %s from %s",
+                command,
+                player.get_players_name,
+            )
 
             if command == Actions.SKIP:
                 pass  # Player will not play the round
@@ -430,19 +470,38 @@ class BlackJackGameBase(abc.ABC):
 
             # The state of the game checks that player is not bust before paying him, so no need to recheck it
             if self._get_deck_game_value(player.cards) > dealers_hand_total:
-                logging.info("%s beat the dealer, he had %d in his pot", player, self._players_bet[player])
-                player.msg_to_user("%s, You beat the dealer! you get twice your bet" % player.get_players_name)
-                self.output_msg_to_game("%s, has beat the dealer!" % player.get_players_name)
+                logging.info(
+                    "%s beat the dealer, he had %d in his pot",
+                    player,
+                    self._players_bet[player],
+                )
+                player.msg_to_user(
+                    "%s, You beat the dealer! you get twice your bet"
+                    % player.get_players_name
+                )
+                self.output_msg_to_game(
+                    "%s, has beat the dealer!" % player.get_players_name
+                )
                 self._pay_player(player, TWICE_AS_THE_BET)
 
             elif self._get_deck_game_value(player.cards) == dealers_hand_total:
-                logging.info("%s and the dealer are in a tie, he had %d in his pot", player, self._players_bet[player])
+                logging.info(
+                    "%s and the dealer are in a tie, he had %d in his pot",
+                    player,
+                    self._players_bet[player],
+                )
                 player.msg_to_user(
-                    "%s, You are tied with the dealer! you get 1.5 times your bet" % player.get_players_name)
-                self._pay_player(player, SAME_AS_THE_BET)  # This is a tie, just give his money back
+                    "%s, You are tied with the dealer! you get 1.5 times your bet"
+                    % player.get_players_name
+                )
+                self._pay_player(
+                    player, SAME_AS_THE_BET
+                )  # This is a tie, just give his money back
 
             else:  # Player lost, take his money. NOTE: The game doesn't do anything with the money, just takes it from users and deletes it.
-                logging.info("%s lost, he had %d in his pot", player, self._players_bet[player])
+                logging.info(
+                    "%s lost, he had %d in his pot", player, self._players_bet[player]
+                )
                 player.msg_to_user("%s, You lost" % player.get_players_name)
                 self.output_msg_to_game("%s lost" % player.get_players_name)
                 self._players_bet[player] = 0
@@ -490,13 +549,19 @@ class BlackJackGameBase(abc.ABC):
 
         logging.info("play_round: cards were dealt to players")
 
-        cards_as_icons_dictionary = self.get_players_in_round_decks_as_icons_in_a_dictionary()
+        cards_as_icons_dictionary = (
+            self.get_players_in_round_decks_as_icons_in_a_dictionary()
+        )
 
-        self.output_msg_to_game("Dealers Cards: %s, 🂠" % self._dealers_cards.cards[0].text_image)
+        self.output_msg_to_game(
+            "Dealers Cards: %s, 🂠" % self._dealers_cards.cards[0].text_image
+        )
 
         for player in self._players_in_round:
-            self.output_msg_to_game("%s Cards: %s" % (
-                player.get_players_name, cards_as_icons_dictionary[player]))
+            self.output_msg_to_game(
+                "%s Cards: %s"
+                % (player.get_players_name, cards_as_icons_dictionary[player])
+            )
 
         # =======================================================
         # Check for blackjacks
@@ -507,45 +572,75 @@ class BlackJackGameBase(abc.ABC):
 
         for player in self._players_in_round.copy():
             player_action = None
-            allowed_commands = [Actions.HIT, Actions.DOUBLE, Actions.STAND, Actions.SURRENDER]
+            allowed_commands = [
+                Actions.HIT,
+                Actions.DOUBLE,
+                Actions.STAND,
+                Actions.SURRENDER,
+            ]
             logging.debug("play_round: trying to get command from %s", player)
-            while not player_action == Actions.STAND and not player_action == Actions.SURRENDER \
-                    and not player_action == Actions.DOUBLE:  # player can hit until he's bust
-                msg = "%s - To Hit type 'H'\nTo stand type 'S'\n" \
-                      "To Double down type 'D'\n" \
-                      "To Surrender and get half your money back, type 'Surrender\n" % player.get_players_name
+            while (
+                not player_action == Actions.STAND
+                and not player_action == Actions.SURRENDER
+                and not player_action == Actions.DOUBLE
+            ):  # player can hit until he's bust
+                msg = (
+                    "%s - To Hit type 'H'\nTo stand type 'S'\n"
+                    "To Double down type 'D'\n"
+                    "To Surrender and get half your money back, type 'Surrender\n"
+                    % player.get_players_name
+                )
 
                 player_action = player.get_cmd(msg, allowed_commands)
 
                 if player_action == Actions.HIT:
                     try:
-                        allowed_commands.remove(Actions.DOUBLE)  # players can't double down after hitting
+                        allowed_commands.remove(
+                            Actions.DOUBLE
+                        )  # players can't double down after hitting
                     except ValueError:
                         pass  # already removed this option when player previously hit
                     player.take_card(self._game_deck.draw_card())
                     logging.info("%s said HIT", player)
                     self.output_msg_to_game(
-                        "%s's deck: %s" % (player.get_players_name, player.cards.return_deck_as_icons))
+                        "%s's deck: %s"
+                        % (player.get_players_name, player.cards.return_deck_as_icons)
+                    )
 
                 if player_action == Actions.DOUBLE:
                     logging.info("%s said DOUBLE DOWN", player)
                     players_bet = self._players_bet[player]
 
-                    if players_bet <= player.remaining_money:  # check if can double down
+                    if (
+                        players_bet <= player.remaining_money
+                    ):  # check if can double down
                         player.take_card(self._game_deck.draw_card())
                         self.output_msg_to_game(
-                            "%s's deck: %s" % (player.get_players_name, player.cards.return_deck_as_icons))
+                            "%s's deck: %s"
+                            % (
+                                player.get_players_name,
+                                player.cards.return_deck_as_icons,
+                            )
+                        )
                         self._players_bet[player] += player.give_money(players_bet)
 
                     else:
-                        player.msg_to_user("%s - You don't have enough to double down" % player.get_players_name)
-                        logging.info("%s tried to double down, but doesnt have enough money", player.get_players_name)
+                        player.msg_to_user(
+                            "%s - You don't have enough to double down"
+                            % player.get_players_name
+                        )
+                        logging.info(
+                            "%s tried to double down, but doesnt have enough money",
+                            player.get_players_name,
+                        )
 
                 if player_action == Actions.STAND:
                     logging.info("%s said STAND", player)
 
                 if player_action == Actions.SURRENDER:
-                    logging.info("%s said SURRENDER, giving him half the bet back", player)
+                    logging.info(
+                        "%s said SURRENDER, giving him half the bet back", player
+                    )
                     players_bet = self._players_bet[player]
                     player.get_money(players_bet * 0.5)
                     self._players_bet[player] = 0
@@ -553,9 +648,15 @@ class BlackJackGameBase(abc.ABC):
                     self.output_msg_to_game("%s said SURRENDER" % player)
 
                 if self._get_deck_game_value(player.cards) > 21:
-                    logging.info("%s is bust after hitting too much " + player.cards.return_deck_as_icons, player)
-                    self.output_msg_to_game("Player %s is bust: %s" % (player,
-                                                                       player.cards.return_deck_as_icons))
+                    logging.info(
+                        "%s is bust after hitting too much "
+                        + player.cards.return_deck_as_icons,
+                        player,
+                    )
+                    self.output_msg_to_game(
+                        "Player %s is bust: %s"
+                        % (player, player.cards.return_deck_as_icons)
+                    )
                     self._players_bet[player.get_players_name] = 0
                     self._players_in_round.remove(player)
                     break
@@ -573,12 +674,16 @@ class BlackJackGameBase(abc.ABC):
         while self._get_deck_game_value(self._dealers_cards) < 17:
             self._dealers_cards.take_card(self._game_deck.draw_card())
             logging.info("Dealer took another card")
-            self.output_msg_to_game("Dealer's deck: %s" % self._dealers_cards.return_deck_as_icons)
+            self.output_msg_to_game(
+                "Dealer's deck: %s" % self._dealers_cards.return_deck_as_icons
+            )
 
         if self._get_deck_game_value(self._dealers_cards) > 21:
             logging.debug("Dealer is bust, paying remaining players twice their bet")
             self.output_msg_to_game(
-                "Dealer is bust! \n%s - you get twice your bet" % str(self._players_in_round).strip('[]'))
+                "Dealer is bust! \n%s - you get twice your bet"
+                % str(self._players_in_round).strip("[]")
+            )
 
             for player in self._players_in_round:
                 self._pay_player(player, TWICE_AS_THE_BET)

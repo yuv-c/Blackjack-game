@@ -1,7 +1,15 @@
 import logging
-from Blackjack_base import Actions, Deck, Player, \
-    SAME_AS_THE_BET, ONE_AND_A_HALF_TIMES_THE_BET, TWICE_AS_THE_BET, ACE_VALUE, \
-    PlayerHasNoMoneyError, BlackJackGameBase
+from Blackjack_base import (
+    Actions,
+    Deck,
+    Player,
+    SAME_AS_THE_BET,
+    ONE_AND_A_HALF_TIMES_THE_BET,
+    TWICE_AS_THE_BET,
+    ACE_VALUE,
+    PlayerHasNoMoneyError,
+    BlackJackGameBase,
+)
 import uuid
 
 logging.basicConfig(level=logging.DEBUG)
@@ -31,8 +39,12 @@ class BlackJackGameOffLine(BlackJackGameBase):
 
         while self._num_of_players <= 0:
             try:
-                self._num_of_players = int(self.get_input_from_user("Enter number of players: "))
-                logging.info("BlackJack game created with %d players", self._num_of_players)
+                self._num_of_players = int(
+                    self.get_input_from_user("Enter number of players: ")
+                )
+                logging.info(
+                    "BlackJack game created with %d players", self._num_of_players
+                )
 
                 if self._num_of_players < 0:
                     self.output_msg_to_game("Enter a positive integer!")
@@ -54,7 +66,11 @@ class BlackJackGameOffLine(BlackJackGameBase):
             while (money_of_player < 0) or (not type(money_of_player) is int):
                 try:
                     logging.debug("Taking %s amount of money", name)
-                    money_of_player = int(self.get_input_from_user("%s - How much money do you have?\n" % name))
+                    money_of_player = int(
+                        self.get_input_from_user(
+                            "%s - How much money do you have?\n" % name
+                        )
+                    )
 
                     if money_of_player < 0:
                         self.output_msg_to_game("Enter a positive number!!")
@@ -64,7 +80,9 @@ class BlackJackGameOffLine(BlackJackGameBase):
                     logging.exception("User entered an illegal value")
                     continue
 
-            player = OffLinePlayer(name=name, amount_of_money=money_of_player, id=uuid.uuid4().hex[:8])
+            player = OffLinePlayer(
+                name=name, amount_of_money=money_of_player, id=uuid.uuid4().hex[:8]
+            )
             self._add_player(player)
 
     def remove_player_from_game(self, player):

@@ -1,6 +1,13 @@
 from unittest import mock
-from Blackjack_base import Card, Deck, Suites, \
-    Actions, NoMoreCardsInDeckError, CardAlreadyInDeckError, TWICE_AS_THE_BET
+from Blackjack_base import (
+    Card,
+    Deck,
+    Suites,
+    Actions,
+    NoMoreCardsInDeckError,
+    CardAlreadyInDeckError,
+    TWICE_AS_THE_BET,
+)
 from Blackjack_offline import BlackJackGameOffLine, Player, OffLinePlayer
 
 
@@ -17,8 +24,17 @@ def test_card_to_icon():
 
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
 def test_get_deck_game_value_reduces_value_of_ace_if_bust(get_input_from_user_mock):
-    get_input_from_user_mock.side_effect = ["4", "Player A", 0, "Player B", 0, "Player C", 0, "Player D",
-                                            0]  # create a BJ game instance with 4 players
+    get_input_from_user_mock.side_effect = [
+        "4",
+        "Player A",
+        0,
+        "Player B",
+        0,
+        "Player C",
+        0,
+        "Player D",
+        0,
+    ]  # create a BJ game instance with 4 players
 
     game = BlackJackGameOffLine()
     game._players[0].take_card(Card(suit=Suites.HEARTS, rank=5))
@@ -45,16 +61,22 @@ def test_get_deck_game_value_reduces_value_of_ace_if_bust(get_input_from_user_mo
 @mock.patch.object(Deck, "draw_card")
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
-def test_handle_naturals_before_players_can_decide_on_first_round(get_input_from_user_mock,
-                                                                  get_input_from_offline_player_mock,
-                                                                  draw_card_mock):
-    get_input_from_user_mock.side_effect = ["1", "Test Player", 500]  # mock 1 player that has 500$
-    get_input_from_offline_player_mock.side_effect = ['b', 500]
+def test_handle_naturals_before_players_can_decide_on_first_round(
+    get_input_from_user_mock, get_input_from_offline_player_mock, draw_card_mock
+):
+    get_input_from_user_mock.side_effect = [
+        "1",
+        "Test Player",
+        500,
+    ]  # mock 1 player that has 500$
+    get_input_from_offline_player_mock.side_effect = ["b", 500]
 
-    draw_card_mock.side_effect = [Card(suit=Suites.CLUBS, rank="A"),  # deal player a BlackJack (21)
-                                  Card(suit=Suites.SPADES, rank="Q"),
-                                  Card(suit=Suites.DIAMONDS, rank="K"),
-                                  Card(suit=Suites.HEARTS, rank=5)]
+    draw_card_mock.side_effect = [
+        Card(suit=Suites.CLUBS, rank="A"),  # deal player a BlackJack (21)
+        Card(suit=Suites.SPADES, rank="Q"),
+        Card(suit=Suites.DIAMONDS, rank="K"),
+        Card(suit=Suites.HEARTS, rank=5),
+    ]
     game = BlackJackGameOffLine()
     game.play_round()
     assert game._players[0].remaining_money == 750
@@ -63,16 +85,24 @@ def test_handle_naturals_before_players_can_decide_on_first_round(get_input_from
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
 @mock.patch.object(Deck, "draw_card")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
-def test_players_have_to_bet_or_skip(get_input_from_user_blackjack_mock, draw_card_mock, _get_input_from_user_mock):
-    get_input_from_user_blackjack_mock.side_effect = ["1", "Test Player A", 500]  # mock a player that has 500$
+def test_players_have_to_bet_or_skip(
+    get_input_from_user_blackjack_mock, draw_card_mock, _get_input_from_user_mock
+):
+    get_input_from_user_blackjack_mock.side_effect = [
+        "1",
+        "Test Player A",
+        500,
+    ]  # mock a player that has 500$
 
     # try to hit when you need to bet, then make proceed as normal
-    _get_input_from_user_mock.side_effect = ['h', 'b', 500]
+    _get_input_from_user_mock.side_effect = ["h", "b", 500]
 
-    draw_card_mock.side_effect = [Card(suit=Suites.CLUBS, rank="A"),  # deal player a BlackJack (21)
-                                  Card(suit=Suites.SPADES, rank="Q"),
-                                  Card(suit=Suites.DIAMONDS, rank="K"),
-                                  Card(suit=Suites.HEARTS, rank=5)]
+    draw_card_mock.side_effect = [
+        Card(suit=Suites.CLUBS, rank="A"),  # deal player a BlackJack (21)
+        Card(suit=Suites.SPADES, rank="Q"),
+        Card(suit=Suites.DIAMONDS, rank="K"),
+        Card(suit=Suites.HEARTS, rank=5),
+    ]
     game = BlackJackGameOffLine()
     game.play_round()
     assert game._players[0].remaining_money == 750
@@ -81,21 +111,49 @@ def test_players_have_to_bet_or_skip(get_input_from_user_blackjack_mock, draw_ca
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
 @mock.patch.object(Deck, "draw_card")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
-def test_game_full_round(get_input_from_blackjack_user, draw_card_mock, _get_input_from_user_mock):
+def test_game_full_round(
+    get_input_from_blackjack_user, draw_card_mock, _get_input_from_user_mock
+):
     # 3 players with 100$ each
-    get_input_from_blackjack_user.side_effect = ["3", "Bust Player A", 100, "Tie Player B", 100, "Winning Player C",
-                                                 100]
+    get_input_from_blackjack_user.side_effect = [
+        "3",
+        "Bust Player A",
+        100,
+        "Tie Player B",
+        100,
+        "Winning Player C",
+        100,
+    ]
 
     # deal bust player, then, tie player, then, winning player, then dealer...
-    draw_card_mock.side_effect = [Card(suit=Suites.SPADES, rank=2), Card(suit=Suites.HEARTS, rank="J"),
-                                  Card(suit=Suites.HEARTS, rank="K"), Card(suit=Suites.CLUBS, rank="J"),
-                                  Card(suit=Suites.SPADES, rank=10), Card(suit=Suites.SPADES, rank=6),
-                                  Card(suit=Suites.HEARTS, rank=3), Card(suit=Suites.DIAMONDS, rank=6),
-                                  Card(suit=Suites.CLUBS, rank="K"), Card(suit=Suites.HEARTS, rank=2),
-                                  Card(suit=Suites.HEARTS, rank=7), Card(suit=Suites.CLUBS, rank=2)]
+    draw_card_mock.side_effect = [
+        Card(suit=Suites.SPADES, rank=2),
+        Card(suit=Suites.HEARTS, rank="J"),
+        Card(suit=Suites.HEARTS, rank="K"),
+        Card(suit=Suites.CLUBS, rank="J"),
+        Card(suit=Suites.SPADES, rank=10),
+        Card(suit=Suites.SPADES, rank=6),
+        Card(suit=Suites.HEARTS, rank=3),
+        Card(suit=Suites.DIAMONDS, rank=6),
+        Card(suit=Suites.CLUBS, rank="K"),
+        Card(suit=Suites.HEARTS, rank=2),
+        Card(suit=Suites.HEARTS, rank=7),
+        Card(suit=Suites.CLUBS, rank=2),
+    ]
 
-    _get_input_from_user_mock.side_effect = ['b', 100, 'b', 100, 'b', 100,
-                                             'h', 'h', 's', 'h', 's']
+    _get_input_from_user_mock.side_effect = [
+        "b",
+        100,
+        "b",
+        100,
+        "b",
+        100,
+        "h",
+        "h",
+        "s",
+        "h",
+        "s",
+    ]
     # Hit one card for each player, then stand
     game = BlackJackGameOffLine()
     game.play_round()
@@ -262,10 +320,15 @@ def test_pay_player(user_input_mock):
 
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
 def test_handle_winners_and_losers(user_input_mock):
-    user_input_mock.side_effect = ["3",
-                                   "Test player A", "0",
-                                   "Test player B", "0",
-                                   "Test Player C", "0"]
+    user_input_mock.side_effect = [
+        "3",
+        "Test player A",
+        "0",
+        "Test player B",
+        "0",
+        "Test Player C",
+        "0",
+    ]
     game = BlackJackGameOffLine()
     player_a = game._players[0]
     player_b = game._players[1]
@@ -319,19 +382,31 @@ def test_player_deck_print(get_input_from_user_mock):
 @mock.patch.object(Deck, "draw_card")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
 def test_one_player_wins_and_the_rest_continue_to_play(
-        get_input_from_user_blackjack_mock, draw_card_mock, get_input_from_offline_user_mock, get_bet_mock):
-    get_input_from_user_blackjack_mock.side_effect = ["2", "P1", 100, "P2", 100]  # generate two players with 100$ each
+    get_input_from_user_blackjack_mock,
+    draw_card_mock,
+    get_input_from_offline_user_mock,
+    get_bet_mock,
+):
+    get_input_from_user_blackjack_mock.side_effect = [
+        "2",
+        "P1",
+        100,
+        "P2",
+        100,
+    ]  # generate two players with 100$ each
 
-    get_input_from_offline_user_mock.side_effect = ['b', 'b', 's']
+    get_input_from_offline_user_mock.side_effect = ["b", "b", "s"]
     #    player 1 wins automatically, P2 stands and should beat the dealer
     get_bet_mock.side_effect = [100, 100]  # both players will bet 100
 
-    draw_card_mock.side_effect = [Card(suit=Suites.CLUBS, rank="A"),  # deal player a BlackJack (21)
-                                  Card(suit=Suites.SPADES, rank="Q"),  # other player gets Q and K
-                                  Card(suit=Suites.DIAMONDS, rank=10),  # Dealer gets total of 17
-                                  Card(suit=Suites.DIAMONDS, rank="K"),
-                                  Card(suit=Suites.CLUBS, rank="K"),
-                                  Card(suit=Suites.HEARTS, rank=7)]
+    draw_card_mock.side_effect = [
+        Card(suit=Suites.CLUBS, rank="A"),  # deal player a BlackJack (21)
+        Card(suit=Suites.SPADES, rank="Q"),  # other player gets Q and K
+        Card(suit=Suites.DIAMONDS, rank=10),  # Dealer gets total of 17
+        Card(suit=Suites.DIAMONDS, rank="K"),
+        Card(suit=Suites.CLUBS, rank="K"),
+        Card(suit=Suites.HEARTS, rank=7),
+    ]
     game = BlackJackGameOffLine()
     game.play_round()
     assert game._players[0].remaining_money == 150
@@ -341,8 +416,10 @@ def test_one_player_wins_and_the_rest_continue_to_play(
 @mock.patch.object(Player, "get_bet")
 @mock.patch.object(Player, "get_cmd")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
-def test_surrender_gives_back_half_the_money(get_input_from_user_mock, get_cmd_mock, get_bet_mock):
-    get_input_from_user_mock.side_effect = ['1', 'P1', 100]
+def test_surrender_gives_back_half_the_money(
+    get_input_from_user_mock, get_cmd_mock, get_bet_mock
+):
+    get_input_from_user_mock.side_effect = ["1", "P1", 100]
     get_cmd_mock.side_effect = [Actions.BET, Actions.SURRENDER]
     get_bet_mock.side_effect = [100]
     game = BlackJackGameOffLine()
@@ -353,17 +430,20 @@ def test_surrender_gives_back_half_the_money(get_input_from_user_mock, get_cmd_m
 @mock.patch.object(Deck, "draw_card")
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
-def test_bust_player_is_kicked_from_round(get_input_from_user_mock, _get_input_from_offline_player_mock,
-                                          draw_card_mock):
-    get_input_from_user_mock.side_effect = ['1', 'P1', 100]
-    _get_input_from_offline_player_mock.side_effect = ['b', 100, 'h', 'h']
+def test_bust_player_is_kicked_from_round(
+    get_input_from_user_mock, _get_input_from_offline_player_mock, draw_card_mock
+):
+    get_input_from_user_mock.side_effect = ["1", "P1", 100]
+    _get_input_from_offline_player_mock.side_effect = ["b", 100, "h", "h"]
 
-    draw_card_mock.side_effect = [Card(suit=Suites.DIAMONDS, rank=2),
-                                  Card(suit=Suites.SPADES, rank=3),
-                                  Card(suit=Suites.DIAMONDS, rank="A"),
-                                  Card(suit=Suites.DIAMONDS, rank="K"),
-                                  Card(suit=Suites.CLUBS, rank="J"),
-                                  Card(suit=Suites.CLUBS, rank="K")]
+    draw_card_mock.side_effect = [
+        Card(suit=Suites.DIAMONDS, rank=2),
+        Card(suit=Suites.SPADES, rank=3),
+        Card(suit=Suites.DIAMONDS, rank="A"),
+        Card(suit=Suites.DIAMONDS, rank="K"),
+        Card(suit=Suites.CLUBS, rank="J"),
+        Card(suit=Suites.CLUBS, rank="K"),
+    ]
 
     game = BlackJackGameOffLine()
     game.play_round()
@@ -373,18 +453,21 @@ def test_bust_player_is_kicked_from_round(get_input_from_user_mock, _get_input_f
 @mock.patch.object(Deck, "draw_card")
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
-def test_player_cant_double_down_after_hitting(get_input_from_user_mock, _get_input_from_offline_player_mock,
-                                               draw_card_mock):
+def test_player_cant_double_down_after_hitting(
+    get_input_from_user_mock, _get_input_from_offline_player_mock, draw_card_mock
+):
     #   ****** test fails when player has 4 cards ******
 
-    get_input_from_user_mock.side_effect = ['1', 'P1', 100]
-    _get_input_from_offline_player_mock.side_effect = ['b', 100, 'h', 'd', 's']
+    get_input_from_user_mock.side_effect = ["1", "P1", 100]
+    _get_input_from_offline_player_mock.side_effect = ["b", 100, "h", "d", "s"]
 
-    draw_card_mock.side_effect = [Card(suit=Suites.DIAMONDS, rank=2),
-                                  Card(suit=Suites.SPADES, rank="Q"),
-                                  Card(suit=Suites.DIAMONDS, rank=4),
-                                  Card(suit=Suites.DIAMONDS, rank="K"),
-                                  Card(suit=Suites.CLUBS, rank=8)]
+    draw_card_mock.side_effect = [
+        Card(suit=Suites.DIAMONDS, rank=2),
+        Card(suit=Suites.SPADES, rank="Q"),
+        Card(suit=Suites.DIAMONDS, rank=4),
+        Card(suit=Suites.DIAMONDS, rank="K"),
+        Card(suit=Suites.CLUBS, rank=8),
+    ]
 
     game = BlackJackGameOffLine()
     game.play_round()
