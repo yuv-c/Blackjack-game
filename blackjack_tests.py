@@ -1,5 +1,5 @@
 from unittest import mock
-from Blackjack_base import (
+from blackjack_base import (
     Card,
     Deck,
     Suites,
@@ -37,25 +37,25 @@ def test_get_deck_game_value_reduces_value_of_ace_if_bust(get_input_from_user_mo
     ]  # create a BJ game instance with 4 players
 
     game = BlackJackGameOffLine()
-    game._players[0].take_card(Card(suit=Suites.HEARTS, rank=5))
-    game._players[0].take_card(Card(suit=Suites.HEARTS, rank=2))
+    game.players[0].take_card(Card(suit=Suites.HEARTS, rank=5))
+    game.players[0].take_card(Card(suit=Suites.HEARTS, rank=2))
 
-    game._players[1].take_card(Card(suit=Suites.HEARTS, rank="A"))
-    game._players[1].take_card(Card(suit=Suites.HEARTS, rank="K"))
+    game.players[1].take_card(Card(suit=Suites.HEARTS, rank="A"))
+    game.players[1].take_card(Card(suit=Suites.HEARTS, rank="K"))
 
-    game._players[2].take_card(Card(suit=Suites.HEARTS, rank=5))
-    game._players[2].take_card(Card(suit=Suites.HEARTS, rank=2))
-    game._players[2].take_card(Card(suit=Suites.HEARTS, rank="A"))
-    game._players[2].take_card(Card(suit=Suites.HEARTS, rank="K"))
+    game.players[2].take_card(Card(suit=Suites.HEARTS, rank=5))
+    game.players[2].take_card(Card(suit=Suites.HEARTS, rank=2))
+    game.players[2].take_card(Card(suit=Suites.HEARTS, rank="A"))
+    game.players[2].take_card(Card(suit=Suites.HEARTS, rank="K"))
 
-    game._players[3].take_card(Card(suit=Suites.HEARTS, rank="J"))
-    game._players[3].take_card(Card(suit=Suites.HEARTS, rank=5))
-    game._players[3].take_card(Card(suit=Suites.HEARTS, rank="Q"))
+    game.players[3].take_card(Card(suit=Suites.HEARTS, rank="J"))
+    game.players[3].take_card(Card(suit=Suites.HEARTS, rank=5))
+    game.players[3].take_card(Card(suit=Suites.HEARTS, rank="Q"))
 
-    assert game._get_deck_game_value(game._players[0].cards) == 7
-    assert game._get_deck_game_value(game._players[1].cards) == 21
-    assert game._get_deck_game_value(game._players[2].cards) == 18
-    assert game._get_deck_game_value(game._players[3].cards) == 25
+    assert game._get_deck_game_value(game.players[0].cards) == 7
+    assert game._get_deck_game_value(game.players[1].cards) == 21
+    assert game._get_deck_game_value(game.players[2].cards) == 18
+    assert game._get_deck_game_value(game.players[3].cards) == 25
 
 
 @mock.patch.object(Deck, "draw_card")
@@ -79,7 +79,7 @@ def test_handle_naturals_before_players_can_decide_on_first_round(
     ]
     game = BlackJackGameOffLine()
     game.play_round()
-    assert game._players[0].remaining_money == 750
+    assert game.players[0].remaining_money == 750
 
 
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
@@ -105,7 +105,7 @@ def test_players_have_to_bet_or_skip(
     ]
     game = BlackJackGameOffLine()
     game.play_round()
-    assert game._players[0].remaining_money == 750
+    assert game.players[0].remaining_money == 750
 
 
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
@@ -158,9 +158,9 @@ def test_game_full_round(
     game = BlackJackGameOffLine()
     game.play_round()
 
-    assert game._players[0].remaining_money == 0
-    assert game._players[1].remaining_money == 100
-    assert game._players[2].remaining_money == 200
+    assert game.players[0].remaining_money == 0
+    assert game.players[1].remaining_money == 100
+    assert game.players[2].remaining_money == 200
 
 
 def test_hash_of_identical_cards_gives_the_same_result():
@@ -311,7 +311,7 @@ def test_player_gets_and_gives_money():
 def test_pay_player(user_input_mock):
     user_input_mock.side_effect = ["1", "Test Player", 0]
     game = BlackJackGameOffLine()
-    test_player = game._players[0]
+    test_player = game.players[0]
     game._players_bet[test_player] = 100
 
     game._pay_player(test_player, TWICE_AS_THE_BET)
@@ -330,9 +330,9 @@ def test_handle_winners_and_losers(user_input_mock):
         "0",
     ]
     game = BlackJackGameOffLine()
-    player_a = game._players[0]
-    player_b = game._players[1]
-    player_c = game._players[2]
+    player_a = game.players[0]
+    player_b = game.players[1]
+    player_c = game.players[2]
 
     player_a.take_card(Card(suit=Suites.SPADES, rank=8))
     player_a.take_card(Card(suit=Suites.DIAMONDS, rank=10))
@@ -364,20 +364,20 @@ def test_player_deck_print(get_input_from_user_mock):
 
     game = BlackJackGameOffLine()
 
-    player = game._players[0]
+    player = game.players[0]
 
     game._players_in_round.append(player)
 
-    game._players[0].take_card(Card(suit=Suites.DIAMONDS, rank=7))
-    game._players[0].take_card(Card(suit=Suites.DIAMONDS, rank=8))
-    game._players[0].take_card(Card(suit=Suites.DIAMONDS, rank=9))
+    game.players[0].take_card(Card(suit=Suites.DIAMONDS, rank=7))
+    game.players[0].take_card(Card(suit=Suites.DIAMONDS, rank=8))
+    game.players[0].take_card(Card(suit=Suites.DIAMONDS, rank=9))
 
     dict_of_icons = game.get_players_in_round_decks_as_icons_in_a_dictionary()
 
     assert dict_of_icons[player] == "[7 of ♦ ], [8 of ♦ ], [9 of ♦ ]"
 
 
-@mock.patch.object(Player, "get_bet")
+@mock.patch.object(OffLinePlayer, "get_bet")
 @mock.patch.object(OffLinePlayer, "_get_input_from_user")
 @mock.patch.object(Deck, "draw_card")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
@@ -409,12 +409,12 @@ def test_one_player_wins_and_the_rest_continue_to_play(
     ]
     game = BlackJackGameOffLine()
     game.play_round()
-    assert game._players[0].remaining_money == 150
-    assert game._players[1].remaining_money == 200
+    assert game.players[0].remaining_money == 150
+    assert game.players[1].remaining_money == 200
 
 
-@mock.patch.object(Player, "get_bet")
-@mock.patch.object(Player, "get_cmd")
+@mock.patch.object(OffLinePlayer, "get_bet")
+@mock.patch.object(OffLinePlayer, "get_cmd")
 @mock.patch.object(BlackJackGameOffLine, "get_input_from_user")
 def test_surrender_gives_back_half_the_money(
     get_input_from_user_mock, get_cmd_mock, get_bet_mock
@@ -424,7 +424,7 @@ def test_surrender_gives_back_half_the_money(
     get_bet_mock.side_effect = [100]
     game = BlackJackGameOffLine()
     game.play_round()
-    assert game._players[0].remaining_money == 50
+    assert game.players[0].remaining_money == 50
 
 
 @mock.patch.object(Deck, "draw_card")
@@ -447,7 +447,7 @@ def test_bust_player_is_kicked_from_round(
 
     game = BlackJackGameOffLine()
     game.play_round()
-    assert game._players[0].remaining_money == 0
+    assert game.players[0].remaining_money == 0
 
 
 @mock.patch.object(Deck, "draw_card")
@@ -472,4 +472,4 @@ def test_player_cant_double_down_after_hitting(
     game = BlackJackGameOffLine()
     game.play_round()
 
-    assert game._players[0].num_of_remaining_cards == 3
+    assert game.players[0].num_of_remaining_cards == 3

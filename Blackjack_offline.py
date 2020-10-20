@@ -1,13 +1,6 @@
 import logging
-from Blackjack_base import (
-    Actions,
-    Deck,
+from blackjack_base import (
     Player,
-    SAME_AS_THE_BET,
-    ONE_AND_A_HALF_TIMES_THE_BET,
-    TWICE_AS_THE_BET,
-    ACE_VALUE,
-    PlayerHasNoMoneyError,
     BlackJackGameBase,
 )
 import uuid
@@ -19,11 +12,38 @@ class OffLinePlayer(Player):
     def __init__(self, name: str, id: str, amount_of_money: int = 0):
         super().__init__(name, id, amount_of_money)
 
-    def _get_input_from_user(self, msg):
-        logging.debug("asking user input with the following message: %s", msg)
-        return input(msg)
+    def _request_input_from_user(self, msg):
+        print(msg)
 
-    def msg_to_user(self, msg):
+    def _get_input_from_user(self):
+        return input()
+
+    def get_cmd(self, msg, list_of_valid_actions):
+        while True:
+            self._request_input_from_user(msg)
+            user_input = self._get_input_from_user()
+            logging.info("Got input from user: %s", user_input)
+            user_action = self._convert_command_to_Action(user_input)
+            if user_action not in list_of_valid_actions:
+                logging.info(
+                    "Got un-allowed Action %s from %s",
+                    user_action,
+                    self.get_players_name,
+                )
+                continue
+            return user_action
+
+    def get_bet(self):
+        logging.debug("Getting bet from %s", self.get_players_name)
+        self._request_input_from_user("Place your bet: ")
+        bet = self._get_input_from_user()
+        while not self._bet_is_valid(bet):
+            self._request_input_from_user("Place your bet: ")
+            bet = self._get_input_from_user()
+        return int(bet)
+
+    @staticmethod
+    def msg_to_user(msg):
         print(msg)
 
 
@@ -83,13 +103,13 @@ class BlackJackGameOffLine(BlackJackGameBase):
             player = OffLinePlayer(
                 name=name, amount_of_money=money_of_player, id=uuid.uuid4().hex[:8]
             )
-            self._add_player(player)
+            self.add_player(player)
 
     def remove_player_from_game(self, player):
-        self._players.remove(player)
+        self.players.remove(player)
 
     def _end_connection_with_player(self, player_id):
-        player = self._players[player_id]
+        player = self.players[player_id]
         logging.info("Ending connection with player")
         player.msg_to_user("You don't have any money left. Reconnect to play again.")
 

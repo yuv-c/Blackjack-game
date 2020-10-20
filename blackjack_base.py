@@ -145,42 +145,36 @@ class Deck(object):
 
 class Player(abc.ABC):
     def __init__(self, name: str, id: str, amount_of_money: int = 0) -> None:
-        self._threads = []
         self.cards = Deck()
         self._name = name
         self._amount_of_money = amount_of_money
-        self.id = id
-        logging.debug("Player Created with name: %s. money: %d", name, amount_of_money)
+        self._id = id
+        logging.info("Player Created with name: %s. money: %d", name, amount_of_money)
 
     def __str__(self):
         return self._name
 
+    @property
+    def id(self):
+        return self._id
+
     @abc.abstractmethod
-    def _get_input_from_user(
+    def _request_input_from_user(
         self, msg
     ):  # method to request strings (i.e names, how many players, etc)
         pass
 
-    def get_cmd(self, msg, list_of_valid_actions):
-        while True:
-            user_input = self._get_input_from_user(msg)
-            logging.info("Got input from user: %s", user_input)
-            user_action = self._convert_command_to_Action(user_input)
-            if user_action not in list_of_valid_actions:
-                logging.info(
-                    "Got un-allowed Action %s from %s",
-                    user_action,
-                    self.get_players_name,
-                )
-                continue
-            return user_action
+    @abc.abstractmethod
+    def _get_input_from_user(self, *args, **kwargs):
+        pass
 
+    @abc.abstractmethod
+    def get_cmd(self, msg, list_of_valid_actions):
+        pass
+
+    @abc.abstractmethod
     def get_bet(self):
-        logging.debug("Getting bet from %s", self.get_players_name)
-        bet = self._get_input_from_user("Place your bet: ")
-        while not self._bet_is_valid(bet):
-            bet = self._get_input_from_user("Place your bet: ")
-        return int(bet)
+        pass
 
     def _bet_is_valid(self, bet):
         logging.debug("Validating Bet")
@@ -264,7 +258,7 @@ class Player(abc.ABC):
         return self._name
 
     @abc.abstractmethod
-    def msg_to_user(self, msg):
+    def msg_to_user(self, *args, **kwargs):
         pass
 
     def take_card(self, card):
@@ -300,13 +294,13 @@ class Player(abc.ABC):
 class BlackJackGameBase(abc.ABC):
     def __init__(self):
         self._players_bet = {}
-        self._players = []
+        self.players = []
         self._players_in_round = []
         self._dealers_cards = Deck()
         self._game_deck = Deck()
 
-    def _add_player(self, player):
-        self._players.append(player)
+    def add_player(self, player):
+        self.players.append(player)
 
     @abc.abstractmethod
     def remove_player_from_game(self, player_id):
@@ -437,7 +431,7 @@ class BlackJackGameBase(abc.ABC):
 
     def _take_bets_from_players(self):
         logging.info("BlackJackGame is starting to take bets from players.")
-        for player in self._players:
+        for player in self.players:
 
             logging.debug(
                 "take_bets_from_players: trying to take a command from %s", player
@@ -509,7 +503,7 @@ class BlackJackGameBase(abc.ABC):
     def _return_lists_of_players_with_and_without_money(self):
         players_with_money = []
         players_without_money = []
-        for player in self._players:
+        for player in self.players:
             player_id = player.id
             if player.remaining_money == 0:
                 players_without_money.append(player_id)
@@ -522,6 +516,7 @@ class BlackJackGameBase(abc.ABC):
         pass
 
     def play_round(self):
+        # TODO: Infinite loop
         # while there are players with money, open new rounds
         # kick players without money
         self._dealers_cards.empty_all_cards()
