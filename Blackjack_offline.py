@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from blackjack_base import (
     Player,
     BlackJackGameBase,
@@ -12,16 +13,12 @@ class OffLinePlayer(Player):
     def __init__(self, name: str, id: str, amount_of_money: int = 0):
         super().__init__(name, id, amount_of_money)
 
-    def _request_input_from_user(self, msg):
-        print(msg)
-
-    def _get_input_from_user(self):
-        return input()
+    def _get_input_from_user(self, msg):
+        return input(msg)
 
     def get_cmd(self, msg, list_of_valid_actions):
         while True:
-            self._request_input_from_user(msg)
-            user_input = self._get_input_from_user()
+            user_input = self._get_input_from_user(msg)
             logging.info("Got input from user: %s", user_input)
             user_action = self._convert_command_to_Action(user_input)
             if user_action not in list_of_valid_actions:
@@ -32,15 +29,6 @@ class OffLinePlayer(Player):
                 )
                 continue
             return user_action
-
-    def get_bet(self):
-        logging.debug("Getting bet from %s", self.get_players_name)
-        self._request_input_from_user("Place your bet: ")
-        bet = self._get_input_from_user()
-        while not self._bet_is_valid(bet):
-            self._request_input_from_user("Place your bet: ")
-            bet = self._get_input_from_user()
-        return int(bet)
 
     @staticmethod
     def msg_to_user(msg):
@@ -121,6 +109,10 @@ class BlackJackGameOffLine(BlackJackGameBase):
         return input(msg)
 
 
-if __name__ == "__main__":
+async def main():
     bj_game = BlackJackGameOffLine()
-    bj_game.play_round()
+    await bj_game.play_round()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

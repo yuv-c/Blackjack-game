@@ -3,14 +3,9 @@ from blackjack_base import Player, BlackJackGameBase
 import socketio
 import sanic
 import asyncio
-import time
-
-'''
-1)
-'''
 
 LOG_FORMAT = "%(asctime)s | %(levelname)s | %(name)s | %(module)s | %(lineno)d | %(process)d | %(message)s"
-logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
+logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 
 # =========================================================================================================
 # ************************************************* Server ************************************************
@@ -18,6 +13,8 @@ logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 sio = socketio.AsyncServer(async_mode='sanic', logger=False)
 app = sanic.app.Sanic(name='TestServer')
+logging.getLogger('socketio').setLevel(logging.WARNING)
+logging.getLogger('engineio').setLevel(logging.WARNING)
 sio.attach(app)
 
 event_loop = asyncio.get_event_loop()
@@ -26,10 +23,6 @@ sid_to_room = {}
 games_list = []  # room numbers and game numbers are always equal.
 MAX_NUMBER_OF_PLAYERS_IN_ROOM = 6
 
-
-# =========================================================================================================
-# ******************************************* Server Methods **********************************************
-# =========================================================================================================
 
 @sio.event
 async def connect(sid: str, evniron):
@@ -64,8 +57,8 @@ async def put_user_input_into_player_instance_queue(sid, data):
 def find_most_populated_room() -> int:
     logging.debug("Searching for room")
     if len(games_list) == 0:
-        open_room(1)
-        return 1
+        open_room(0)
+        return 0
     try:
         return sorted([x for x in games_list if x.num_of_players_in_room < MAX_NUMBER_OF_PLAYERS_IN_ROOM],
                       key=lambda game: game.num_of_players_in_room)[-1].room_number
@@ -88,7 +81,7 @@ async def add_player_to_room(sid: str, name: str, money: int) -> None:
     player = OnlinePlayer(name=name, sid=sid, amount_of_money=int(money))
     client_room_num = sid_to_room[sid]
     games_list[client_room_num].add_player(player=player)
-    msg = "Welcome %s to room %d" % (name, client_room_num)
+    msg = "Welcome to room %d %s" % (client_room_num, name)
     await send_msg_to_room(msg, client_room_num)
 
 
@@ -110,27 +103,32 @@ class OnlinePlayer(Player):
         Player.__init__(self, name=name, id=sid, amount_of_money=amount_of_money)
         self.q = asyncio.Queue()
 
-    async def _request_input_from_user(self, msg) -> None:
+    async def _get_input_from_user(self, msg) -> str:
         await sio.emit("send input to server", data=msg, to=self.id)
+        logging.debug("Waiting for q item to return...")
+        item = await self.q.get()
+        logging.debug("Got item from q")
+        return str(item)
 
     async def put_user_input_in_queue(self, usr_input) -> None:
+        #   This is called by the event
         await self.q.put(usr_input)
-
-    async def _get_input_from_user(self) -> str:
-        return await self.q.get()
 
     async def msg_to_user(self, text):
         await sio.send(data=text, to=self._id)
 
-    def get_bet(self):
-        raise NotImplementedError
+    async def get_bet(self):
+        logging.info("Getting bet from %s", self.get_players_name)
+        bet = await self._get_input_from_user("Place your bet: ")
+        while not await self._bet_is_valid(bet):
+            bet = await self._get_input_from_user("Place your bet: ")
+        return int(bet)
 
     async def get_cmd(self, msg, list_of_valid_actions):
         while True:
-            await self._request_input_from_user(msg)
-            user_input = await self._get_input_from_user()
+            user_input = await self._get_input_from_user(msg)
             logging.info("Got input from user: %s", user_input)
-            user_action = self._convert_command_to_Action(user_input)
+            user_action = await self._convert_command_to_Action(user_input)
             if user_action not in list_of_valid_actions:
                 logging.info(
                     "Got invalid Action %s from %s",

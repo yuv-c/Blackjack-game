@@ -2,7 +2,7 @@ from enum import Enum
 import random
 import logging
 import abc
-
+import asyncio
 
 class NoMoreCardsInDeckError(Exception):
     pass
@@ -159,30 +159,22 @@ class Player(abc.ABC):
         return self._id
 
     @abc.abstractmethod
-    def _request_input_from_user(
-        self, msg
+    def _get_input_from_user(
+            self, msg
     ):  # method to request strings (i.e names, how many players, etc)
         pass
 
     @abc.abstractmethod
-    def _get_input_from_user(self, *args, **kwargs):
+    async def get_cmd(self, msg, list_of_valid_actions):
         pass
 
-    @abc.abstractmethod
-    def get_cmd(self, msg, list_of_valid_actions):
-        pass
-
-    @abc.abstractmethod
-    def get_bet(self):
-        pass
-
-    def _bet_is_valid(self, bet):
+    async def _bet_is_valid(self, bet):
         logging.debug("Validating Bet")
         try:
             bet = int(bet)
         except ValueError:
             logging.info("Got a non valid bet from %s", self.get_players_name)
-            self.msg_to_user("Enter a positive number")
+            await self.msg_to_user("Enter a positive number")
             return False
 
         if self.remaining_money == 0:
@@ -192,7 +184,7 @@ class Player(abc.ABC):
 
         if bet > self.remaining_money:
             logging.info("%s tried to bet more than he has", self.get_players_name)
-            self.msg_to_user(
+            await self.msg_to_user(
                 "You don't have %s$! you can place a bet up to %d"
                 % (bet, self.remaining_money)
             )
@@ -200,15 +192,15 @@ class Player(abc.ABC):
 
         elif bet < 0:
             logging.info("%s tried to bet a negative number", self.get_players_name)
-            self.msg_to_user("Enter a positive number")
+            await self.msg_to_user("Enter a positive number")
             return False
         logging.debug("Bet is valid")
         return True
 
-    def _convert_command_to_Action(self, user_input):
+    async def _convert_command_to_Action(self, user_input):
+        logging.debug("Converting user input %s to command", user_input)
         try:
-            user_input = user_input.strip()
-            user_input = user_input.lower()
+            user_input = user_input.strip().lower()
 
             if user_input == "h" or user_input == "hit":
                 logging.info("accepted decision from %s, HIT", self.get_players_name)
@@ -239,7 +231,7 @@ class Player(abc.ABC):
                 return Actions.SURRENDER
 
             else:
-                self.msg_to_user("Not a valid command!")
+                await self.msg_to_user("Not a valid command!")
                 logging.info(
                     "%s typed the following invalid command: %s.",
                     self.get_players_name,
@@ -251,18 +243,18 @@ class Player(abc.ABC):
             logging.exception(
                 "%s typed %s, not a string", self.get_players_name, user_input
             )
-            self.msg_to_user("Enter a valid command according to the instructions")
+            await self.msg_to_user("Enter a valid command according to the instructions")
 
     @property
     def get_players_name(self):
         return self._name
 
     @abc.abstractmethod
-    def msg_to_user(self, *args, **kwargs):
+    async def msg_to_user(self, *args, **kwargs):
         pass
 
     def take_card(self, card):
-        self.cards.take_card(card, bool)
+        self.cards.take_card(card, True)
 
     def draw_card(self):
         return self.cards.draw_card()
@@ -300,6 +292,7 @@ class BlackJackGameBase(abc.ABC):
         self._game_deck = Deck()
 
     def add_player(self, player):
+        logging.info("Player added")
         self.players.append(player)
 
     @abc.abstractmethod
@@ -325,7 +318,7 @@ class BlackJackGameBase(abc.ABC):
             return 10  # A face card
 
     @abc.abstractmethod
-    def output_msg_to_game(self, msg):
+    async def output_msg_to_game(self, msg):
         pass
 
     def _get_deck_game_value(self, deck):
@@ -386,50 +379,59 @@ class BlackJackGameBase(abc.ABC):
     def _dealer_has_blackjack(self):
         return self._get_deck_game_value(self._dealers_cards) == 21
 
-    def _return_money_to_players_with_blackjack(self):
+    async def _return_money_to_players_with_blackjack(self):
         for player in self._players_in_round:
             if self._player_has_blackjack(player):
                 player.get_money(self._players_bet[player])
-                self.output_msg_to_game("%s is in a tie with the dealer." % player)
+                await self.output_msg_to_game("%s is in a tie with the dealer." % player)
                 self._players_bet[player] = 0
                 self._players_in_round.remove(player)
 
-    def _players_without_blackjack_lose_their_bet(self):
+    async def _players_without_blackjack_lose_their_bet(self):
         for player in self._players_in_round:
             if not self._player_has_blackjack(player):
-                self.output_msg_to_game("%s lost" % player)
+                await self.output_msg_to_game("%s lost" % player)
                 self._players_bet[player] = 0
 
-    def _handle_naturals_before_players_can_decide(self):
-        self.output_msg_to_game(
+    async def _handle_naturals_before_players_can_decide(self):
+        await self.output_msg_to_game(
             "Dealer's hand: %s" % self._dealers_cards.return_deck_as_icons
         )
         if self._dealer_has_blackjack():
-            self.output_msg_to_game(
+            await self.output_msg_to_game(
                 "Dealer has Blackjack - %s" % self._dealers_cards.return_deck_as_icons
             )
-            self._return_money_to_players_with_blackjack()
+            await self._return_money_to_players_with_blackjack()
             return
 
         # If dealer doesn't have blackjack
         for player in self._players_in_round.copy():
             if self._player_has_blackjack(player):
                 logging.info("%s has BJ and is getting payed", player.get_players_name)
-                self._pay_player(player, ONE_AND_A_HALF_TIMES_THE_BET)
+                await self._pay_player(player, ONE_AND_A_HALF_TIMES_THE_BET)
                 self._players_bet[player] = 0
                 self._players_in_round.remove(player)
-                self.output_msg_to_game(
+                await self.output_msg_to_game(
                     "%s won 1.5 times his bet" % player.get_players_name
                 )
 
-    def _pay_player(self, player, multiplier):
+    async def _wait_for_players(self):
+        while len(self.players) == 0:
+            await asyncio.sleep(1)
+            continue
+        logging.info("First player has joined the room")
+        return
+
+    async def _pay_player(self, player, multiplier):
         bet = self._players_bet[player]
         amount_to_pay = bet * multiplier
         logging.info("%s is getting payed %d$", player, amount_to_pay)
-        player.msg_to_user("%s, you won %d$" % (player.get_players_name, amount_to_pay))
+        await player.msg_to_user("%s, you won %d$" % (player.get_players_name, amount_to_pay))
         player.get_money(amount_to_pay)
 
-    def _take_bets_from_players(self):
+    async def _take_bets_from_players(self):
+        logging.info("Checking if room has players")
+        await self._wait_for_players()
         logging.info("BlackJackGame is starting to take bets from players.")
         for player in self.players:
 
@@ -438,7 +440,7 @@ class BlackJackGameBase(abc.ABC):
             )
 
             allowed_actions = [Actions.BET, Actions.SKIP]
-            command = player.get_cmd(
+            command = await player.get_cmd(
                 "To bet, type 'B'. To skip this round, type 'Skip'", allowed_actions
             )
 
@@ -452,11 +454,11 @@ class BlackJackGameBase(abc.ABC):
                 pass  # Player will not play the round
 
             elif command == Actions.BET:
-                bet = player.get_bet()
+                bet = await player.get_bet()
                 logging.info("%s is betting %d$", player.get_players_name, bet)
                 self._players_bet[player] = player.give_money(bet)
 
-    def _handle_winners_and_losers(self):
+    async def _handle_winners_and_losers(self):
 
         dealers_hand_total = self._get_deck_game_value(self._dealers_cards)
 
@@ -469,14 +471,14 @@ class BlackJackGameBase(abc.ABC):
                     player,
                     self._players_bet[player],
                 )
-                player.msg_to_user(
+                await player.msg_to_user(
                     "%s, You beat the dealer! you get twice your bet"
                     % player.get_players_name
                 )
-                self.output_msg_to_game(
+                await self.output_msg_to_game(
                     "%s, has beat the dealer!" % player.get_players_name
                 )
-                self._pay_player(player, TWICE_AS_THE_BET)
+                await self._pay_player(player, TWICE_AS_THE_BET)
 
             elif self._get_deck_game_value(player.cards) == dealers_hand_total:
                 logging.info(
@@ -484,11 +486,11 @@ class BlackJackGameBase(abc.ABC):
                     player,
                     self._players_bet[player],
                 )
-                player.msg_to_user(
+                await player.msg_to_user(
                     "%s, You are tied with the dealer! you get 1.5 times your bet"
                     % player.get_players_name
                 )
-                self._pay_player(
+                await self._pay_player(
                     player, SAME_AS_THE_BET
                 )  # This is a tie, just give his money back
 
@@ -496,8 +498,8 @@ class BlackJackGameBase(abc.ABC):
                 logging.info(
                     "%s lost, he had %d in his pot", player, self._players_bet[player]
                 )
-                player.msg_to_user("%s, You lost" % player.get_players_name)
-                self.output_msg_to_game("%s lost" % player.get_players_name)
+                await player.msg_to_user("%s, You lost" % player.get_players_name)
+                await self.output_msg_to_game("%s lost" % player.get_players_name)
                 self._players_bet[player] = 0
 
     def _return_lists_of_players_with_and_without_money(self):
@@ -515,8 +517,7 @@ class BlackJackGameBase(abc.ABC):
     def _end_connection_with_player(self, player_id):
         pass
 
-    def play_round(self):
-        # TODO: Infinite loop
+    async def play_round(self):
         # while there are players with money, open new rounds
         # kick players without money
         self._dealers_cards.empty_all_cards()
@@ -525,13 +526,13 @@ class BlackJackGameBase(abc.ABC):
 
         self._game_deck.reset_deck_and_shuffle()
 
-        self._take_bets_from_players()
+        await self._take_bets_from_players()
 
         for player in self._players_bet:  # Only players who bet play the round
             self._players_in_round.append(player)
 
         if len(self._players_in_round) == 0:
-            self.output_msg_to_game("No Players in this round")
+            await self.output_msg_to_game("No Players in this round")
             return
 
         # =======================================================
@@ -548,12 +549,12 @@ class BlackJackGameBase(abc.ABC):
             self.get_players_in_round_decks_as_icons_in_a_dictionary()
         )
 
-        self.output_msg_to_game(
+        await self.output_msg_to_game(
             "Dealers Cards: %s, 🂠" % self._dealers_cards.cards[0].text_image
         )
 
         for player in self._players_in_round:
-            self.output_msg_to_game(
+            await self.output_msg_to_game(
                 "%s Cards: %s"
                 % (player.get_players_name, cards_as_icons_dictionary[player])
             )
@@ -562,7 +563,7 @@ class BlackJackGameBase(abc.ABC):
         # Check for blackjacks
         # =======================================================
         if any(self._player_has_blackjack(player) for player in self._players_in_round):
-            self._handle_naturals_before_players_can_decide()
+            await self._handle_naturals_before_players_can_decide()
             # Some players won, the round continues without them
 
         for player in self._players_in_round.copy():
@@ -575,18 +576,18 @@ class BlackJackGameBase(abc.ABC):
             ]
             logging.debug("play_round: trying to get command from %s", player)
             while (
-                not player_action == Actions.STAND
-                and not player_action == Actions.SURRENDER
-                and not player_action == Actions.DOUBLE
+                    not player_action == Actions.STAND
+                    and not player_action == Actions.SURRENDER
+                    and not player_action == Actions.DOUBLE
             ):  # player can hit until he's bust
                 msg = (
-                    "%s - To Hit type 'H'\nTo stand type 'S'\n"
-                    "To Double down type 'D'\n"
-                    "To Surrender and get half your money back, type 'Surrender\n"
-                    % player.get_players_name
+                        "%s - To Hit type 'H'\nTo stand type 'S'\n"
+                        "To Double down type 'D'\n"
+                        "To Surrender and get half your money back, type 'Surrender\n"
+                        % player.get_players_name
                 )
 
-                player_action = player.get_cmd(msg, allowed_commands)
+                player_action = await player.get_cmd(msg, allowed_commands)
 
                 if player_action == Actions.HIT:
                     try:
@@ -597,7 +598,7 @@ class BlackJackGameBase(abc.ABC):
                         pass  # already removed this option when player previously hit
                     player.take_card(self._game_deck.draw_card())
                     logging.info("%s said HIT", player)
-                    self.output_msg_to_game(
+                    await self.output_msg_to_game(
                         "%s's deck: %s"
                         % (player.get_players_name, player.cards.return_deck_as_icons)
                     )
@@ -607,10 +608,10 @@ class BlackJackGameBase(abc.ABC):
                     players_bet = self._players_bet[player]
 
                     if (
-                        players_bet <= player.remaining_money
+                            players_bet <= player.remaining_money
                     ):  # check if can double down
                         player.take_card(self._game_deck.draw_card())
-                        self.output_msg_to_game(
+                        await self.output_msg_to_game(
                             "%s's deck: %s"
                             % (
                                 player.get_players_name,
@@ -620,7 +621,7 @@ class BlackJackGameBase(abc.ABC):
                         self._players_bet[player] += player.give_money(players_bet)
 
                     else:
-                        player.msg_to_user(
+                        await player.msg_to_user(
                             "%s - You don't have enough to double down"
                             % player.get_players_name
                         )
@@ -640,7 +641,7 @@ class BlackJackGameBase(abc.ABC):
                     player.get_money(players_bet * 0.5)
                     self._players_bet[player] = 0
                     self._players_in_round.remove(player)
-                    self.output_msg_to_game("%s said SURRENDER" % player)
+                    await self.output_msg_to_game("%s said SURRENDER" % player)
 
                 if self._get_deck_game_value(player.cards) > 21:
                     logging.info(
@@ -648,7 +649,7 @@ class BlackJackGameBase(abc.ABC):
                         + player.cards.return_deck_as_icons,
                         player,
                     )
-                    self.output_msg_to_game(
+                    await self.output_msg_to_game(
                         "Player %s is bust: %s"
                         % (player, player.cards.return_deck_as_icons)
                     )
@@ -660,7 +661,7 @@ class BlackJackGameBase(abc.ABC):
 
         if len(self._players_in_round) == 0:
             logging.info("No players left, returning.")
-            self.output_msg_to_game("No more players, game over")
+            await self.output_msg_to_game("No more players, game over")
             return
 
         # =======================================================
@@ -669,23 +670,23 @@ class BlackJackGameBase(abc.ABC):
         while self._get_deck_game_value(self._dealers_cards) < 17:
             self._dealers_cards.take_card(self._game_deck.draw_card())
             logging.info("Dealer took another card")
-            self.output_msg_to_game(
+            await self.output_msg_to_game(
                 "Dealer's deck: %s" % self._dealers_cards.return_deck_as_icons
             )
 
         if self._get_deck_game_value(self._dealers_cards) > 21:
             logging.debug("Dealer is bust, paying remaining players twice their bet")
-            self.output_msg_to_game(
+            await self.output_msg_to_game(
                 "Dealer is bust! \n%s - you get twice your bet"
                 % str(self._players_in_round).strip("[]")
             )
 
             for player in self._players_in_round:
-                self._pay_player(player, TWICE_AS_THE_BET)
+                await self._pay_player(player, TWICE_AS_THE_BET)
             return
 
         else:
-            return self._handle_winners_and_losers()
+            return await self._handle_winners_and_losers()
 
         # =======================================================
         # Round over
