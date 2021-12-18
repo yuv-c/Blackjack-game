@@ -11,47 +11,53 @@ logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 # ************************************************* Server ************************************************
 # =========================================================================================================
 
-sio = socketio.AsyncServer(async_mode='sanic', logger=False)
-app = sanic.app.Sanic(name='TestServer')
-logging.getLogger('socketio').setLevel(logging.WARNING)
-logging.getLogger('engineio').setLevel(logging.WARNING)
+BJ_NAMESPACE = "/blackjack"
+
+sio = socketio.AsyncServer(async_mode='sanic')
+app = sanic.Sanic(name=__name__)
 sio.attach(app)
 
-event_loop = asyncio.get_event_loop()
+# event_loop = asyncio.get_event_loop()
 
 sid_to_room = {}
 games_list = []  # room numbers and game numbers are always equal.
 MAX_NUMBER_OF_PLAYERS_IN_ROOM = 6
 
 
-@sio.event
+@sio.event(namespace=BJ_NAMESPACE)
 async def connect(sid: str, evniron):
-    logging.info("Client %s connected", sid)
+    logging.info(f"Client {sid} connected")
     room_number = find_most_populated_room()
     sid_to_room[sid] = room_number
-    sio.enter_room(sid=sid, room=room_number)
-    logging.info("Finished creating room")
-    await sio.emit(to=sid, event='send login data to server')
+    logging.info(f"SID {sid}, room {room_number}, namespace {BJ_NAMESPACE}")
+    await sio.emit("connect", to=sid, namespace=BJ_NAMESPACE)
+    sio.enter_room(sid=sid, room=room_number, namespace=BJ_NAMESPACE)
+    logging.info(f"Finished processing connection for {sid}")
 
 
-@sio.on('get login data from client')
-async def put_client_in_room(sid: str, name: str, money: str):
+@sio.on('get_new_player_data', namespace=BJ_NAMESPACE)
+async def process_new_player_data(sid: str, name: str, money: str):
     try:
-        assert int(money) > 0
-        money = int(money)
+        assert (money := int(money)) > 0
         await add_player_to_room(sid, name, money)
     except (ValueError, AssertionError):
-        logging.exception("Bad money argumnet from client %s with SID %s", name, sid)
+        logging.exception(f"Bad 'money' argument from username {name}, SID {sid}")
         await sio.emit(event='message', to=sid, data="Server received bad input, disconnecting")
         await sio.disconnect(sid=sid)
         # TODO: check if room needs to be deleted
 
 
-@sio.on('get input from user')
+@sio.on('get input from user', namespace=BJ_NAMESPACE)
 async def put_user_input_into_player_instance_queue(sid, data):
     client_room_num = sid_to_room[sid]
     player = [x for x in games_list[client_room_num].players if x.id == sid][0]  # get player instance from room
     await player.put_user_input_in_queue(data)
+
+
+@sio.on("ping", namespace=BJ_NAMESPACE)
+async def handle_ping(sid):
+    logging.info("^^^^^^^^^^^^^^^^^^^^^^^ FOOOOO ^^^^^^^^^^^^^^^^^^^^^^")
+    await sio.emit("pong", data={1, 2})
 
 
 def find_most_populated_room() -> int:
@@ -173,4 +179,4 @@ class BlackJackGameOnline(BlackJackGameBase):
 
 if __name__ == '__main__':
     logging.info("******************************Starting server******************************")
-    app.run(host='localhost', port=5000, auto_reload=True)
+    app.run(host='localhost', port=8000, auto_reload=True)
