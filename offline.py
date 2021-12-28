@@ -25,7 +25,7 @@ class OffLinePlayer(Player):
                 logging.info(
                     "Got un-allowed Action %s from %s",
                     user_action,
-                    self.get_players_name,
+                    self.get_player_name,
                 )
                 continue
             return user_action

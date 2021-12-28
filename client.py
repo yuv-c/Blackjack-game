@@ -39,7 +39,7 @@ def handle_msg(data):
     print(data)
 
 
-@sio.on("send input to server", namespace=BJ_NAMESPACE)
+@sio.on("send_input", namespace=BJ_NAMESPACE)
 async def send_input(msg):
     logging.debug("Requesting user input")
     res = input(msg)
@@ -48,7 +48,7 @@ async def send_input(msg):
 
 async def main():
     logging.info("Attempting connection")
-    await sio.connect(SERVER_ADDRESS, namespaces='/blackjack')
+    await sio.connect(SERVER_ADDRESS, namespaces=BJ_NAMESPACE)
     await send_user_details()
     await sio.wait()
 

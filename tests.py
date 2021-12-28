@@ -8,7 +8,7 @@ from blackjack_base import (
     CardAlreadyInDeckError,
     TWICE_AS_THE_BET,
 )
-from Blackjack_offline import BlackJackGameOffLine, Player, OffLinePlayer
+from offline import BlackJackGameOffLine, Player, OffLinePlayer
 
 
 def test_cards():
