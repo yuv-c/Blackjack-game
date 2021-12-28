@@ -2,7 +2,7 @@
 Blackjack project splitted into multiple modules.
 
 Base module - blackjack_base.py:
-The core logic of the game with all the base classes, written in an OOD.
+The core logic of the game with all the base classes, written in an OOD. This module is can be run both synchronously and asynchronously with AsyncIO.
 
 Offline module - offline.py:
 Runs the game from the terminal synchronously.
